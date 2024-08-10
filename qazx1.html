@@ -1,37 +1,63 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Доступ к веб-камере</title>
-    <style>
-        video {
-            width: 100%;
-            height: auto;
-            border: 1px solid black;
-        }
-    </style>
+    <title>Camera Access and Recording</title>
 </head>
 <body>
+    <h1>Camera Access and Recording</h1>
+    <video id="video" autoplay></video>
+    <button id="startRecording">Start Recording</button>
+    <button id="stopRecording" disabled>Stop Recording</button>
+    <video id="recordedVideo" controls></video>
 
-<video id="video" autoplay></video>
+    <script>
+        let video = document.getElementById('video');
+        let recordedVideo = document.getElementById('recordedVideo');
+        let startRecordingButton = document.getElementById('startRecording');
+        let stopRecordingButton = document.getElementById('stopRecording');
 
-<script>
-    async function startVideo() {
-        try {
-            // Запрашиваем доступ к камере
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            const videoElement = document.getElementById('video');
-            // Привязываем поток к видеоэлементу
-            videoElement.srcObject = stream;
-        } catch (error) {
-            console.error("Ошибка доступа к камере: ", error);
-        }
-    }
+        let mediaRecorder;
+        let recordedChunks = [];
 
-    // Запускаем видео при загрузке страницы
-    window.onload = startVideo;
-</script>
+        // Запрашиваем доступ к передней камере
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: true })
+            .then(stream => {
+                video.srcObject = stream;
 
+                startRecordingButton.addEventListener('click', () => {
+                    startRecordingButton.disabled = true;
+                    stopRecordingButton.disabled = false;
+
+                    recordedChunks = [];
+                    mediaRecorder = new MediaRecorder(stream);
+
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            recordedChunks.push(event.data);
+                        }
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const blob = new Blob(recordedChunks, {
+                            type: 'video/webm'
+                        });
+                        recordedVideo.src = URL.createObjectURL(blob);
+                    };
+
+                    mediaRecorder.start();
+                });
+
+                stopRecordingButton.addEventListener('click', () => {
+                    mediaRecorder.stop();
+                    startRecordingButton.disabled = false;
+                    stopRecordingButton.disabled = true;
+                });
+            })
+            .catch(error => {
+                console.error('Error accessing media devices.', error);
+            });
+    </script>
 </body>
 </html>
